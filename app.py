@@ -1,7 +1,7 @@
 import torch
-from PIL import Image
+from PIL import Image, ImageOps
 import qrcode
-
+import torchvision.transforms as T
 from diffusers import (
     StableDiffusionControlNetImg2ImgPipeline,
     ControlNetModel,
@@ -22,35 +22,52 @@ pipe.enable_xformers_memory_efficient_attention()
 
 image_size = 768
 
-main_image = (
-    Image.open("test/image.png").convert("RGB").resize((image_size, image_size))
-)
+
+def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
+    datas = qr_image.convert("RGBA").getdata()
+
+    newData = []
+    for item in datas:
+        if item[0] == 255 and item[1] == 255 and item[2] == 255:
+            newData.append((255, 255, 255, 0))
+        else:
+            newData.append(item)
+
+    img = Image.new(mode="RGBA", size=qr_image.size)
+    img.putdata(newData)
+    return img
+
+
 prompt = "pixel perfect, detailed"
 negative_prompt = "ugly, disfigured, low quality, blurry, nsfw"
 data = "naver.com"
-qr_image = (
-    qrcode.make(
-        data=data,
-        version=1,
-        error_correction=qrcode.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
-    )
-    .convert("RGB")
-    .resize((image_size, image_size))
+main_image = (
+    Image.open("test/test.webp").resize((image_size, image_size)).convert("RGBA")
 )
-blended_image = Image.blend(main_image, qr_image, 0.4)
+qr_image = qrcode.make(
+    data=data,
+    version=1,
+    error_correction=qrcode.ERROR_CORRECT_H,
+    box_size=10,
+    border=4,
+).resize((image_size, image_size))
+qr_image = white_bg_to_transparent(qr_image)
+blended_image = Image.blend(main_image, qr_image, 0.3).convert("RGB")
+blended_image.save("blended.png")
+
+
 image = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
     image=blended_image,
     control_image=qr_image,
-    width=768,
-    height=768,
-    guidance_scale=7.5,
-    controlnet_conditioning_scale=1.1,
-    strength=0.9,
-    num_inference_steps=10,
+    width=image_size,
+    height=image_size,
+    guidance_scale=10,
+    controlnet_conditioning_scale=2.0,
+    strength=0.7,
+    num_inference_steps=30,
 ).images[0]
+
 
 image.save("yellow_cat.png")
