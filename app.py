@@ -38,11 +38,12 @@ def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
     return img
 
 
-prompt = "pixel perfect, detailed"
+prompt = "pixel perfect, contrast, nft"
 negative_prompt = "ugly, disfigured, low quality, blurry, nsfw"
+main_image_path = "test/test.jpg"
 data = "naver.com"
 main_image = (
-    Image.open("test/test2.webp").resize((image_size, image_size)).convert("RGBA")
+    Image.open(main_image_path).resize((image_size, image_size)).convert("RGBA")
 )
 qr_image = qrcode.make(
     data=data,
@@ -52,8 +53,7 @@ qr_image = qrcode.make(
     border=4,
 ).resize((image_size, image_size))
 qr_image = white_bg_to_transparent(qr_image)
-blended_image = Image.blend(main_image, qr_image, 0.3).convert("RGB")
-blended_image.save("blended.png")
+blended_image = Image.blend(main_image, qr_image, 0.4).convert("RGB")
 
 
 image = pipe(
@@ -64,10 +64,10 @@ image = pipe(
     width=image_size,
     height=image_size,
     guidance_scale=10,
-    controlnet_conditioning_scale=2.0,
-    strength=0.7,
-    num_inference_steps=30,
+    controlnet_conditioning_scale=1.2,
+    strength=0.6,
+    num_inference_steps=35,
 ).images[0]
 
 
-image.save("yellow_cat.png")
+image.save(f'{main_image_path.split(".")[0]}.result.png')
