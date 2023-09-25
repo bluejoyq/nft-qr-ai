@@ -42,7 +42,7 @@ prompt = "pixel perfect, detailed"
 negative_prompt = "ugly, disfigured, low quality, blurry, nsfw"
 data = "naver.com"
 main_image = (
-    Image.open("test/test.webp").resize((image_size, image_size)).convert("RGBA")
+    Image.open("test/test2.webp").resize((image_size, image_size)).convert("RGBA")
 )
 qr_image = qrcode.make(
     data=data,
