@@ -9,11 +9,11 @@ from diffusers import (
 
 
 controlnet = ControlNetModel.from_pretrained(
-    "DionTimmer/controlnet_qrcode-control_v1p_sd15", torch_dtype=torch.float16
+    "DionTimmer/controlnet_qrcode-control_v11p_sd21", torch_dtype=torch.float16
 )
 
 pipe = StableDiffusionControlNetImg2ImgPipeline.from_pretrained(
-    "runwayml/stable-diffusion-v1-5",
+    "stabilityai/stable-diffusion-2-1",
     controlnet=controlnet,
     safety_checker=None,
     torch_dtype=torch.float16,
@@ -38,35 +38,57 @@ def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
     return img
 
 
-prompt = "pixel perfect, contrast, nft"
+def transparent_to_white(image: Image.Image) -> Image.Image:
+    datas = image.convert("RGBA").getdata()
+
+    newData = []
+    for item in datas:
+        if item[3] == 0:
+            newData.append((255, 255, 255, 1))
+        else:
+            newData.append(item)
+
+    mew_image = Image.new(mode="RGBA", size=image.size)
+    mew_image.putdata(newData)
+    return mew_image
+
+
+prompt = "high quality, pixel perfect, nft"
 negative_prompt = "ugly, disfigured, low quality, blurry, nsfw"
-main_image_path = "test/test.jpg"
+main_image_path = "test/data.png"
 data = "naver.com"
 main_image = (
     Image.open(main_image_path).resize((image_size, image_size)).convert("RGBA")
 )
-qr_image = qrcode.make(
-    data=data,
-    version=1,
-    error_correction=qrcode.ERROR_CORRECT_H,
-    box_size=10,
-    border=4,
-).resize((image_size, image_size))
-qr_image = white_bg_to_transparent(qr_image)
-blended_image = Image.blend(main_image, qr_image, 0.4).convert("RGB")
+main_image = transparent_to_white(main_image)
+qr_image: Image.Image = (
+    qrcode.make(
+        data=data,
+        version=1,
+        error_correction=qrcode.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    .resize((image_size, image_size))
+    .convert("RGBA")
+)
 
-
+alpha_qr_image = white_bg_to_transparent(qr_image)
+alpha_qr_image.putalpha(100)
+alpha_qr_image.save("alpha.png")
+blended_image = Image.alpha_composite(main_image, alpha_qr_image)
+blended_image.save("blended.png")
 image = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
     image=blended_image,
-    control_image=qr_image,
+    control_image=alpha_qr_image,
     width=image_size,
     height=image_size,
-    guidance_scale=10,
-    controlnet_conditioning_scale=1.2,
+    guidance_scale=5,
+    controlnet_conditioning_scale=0.3,
     strength=0.6,
-    num_inference_steps=35,
+    num_inference_steps=50,
 ).images[0]
 
 

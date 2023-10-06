@@ -1,2 +1,4 @@
 venv
 gradio_cached_examples
+test/data.png
+test/data.result.png
