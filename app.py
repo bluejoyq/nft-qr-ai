@@ -40,27 +40,41 @@ def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
 
 def transparent_to_white(image: Image.Image) -> Image.Image:
     datas = image.convert("RGBA").getdata()
-
     newData = []
     for item in datas:
-        if item[3] == 0:
-            newData.append((255, 255, 255, 1))
+        if item[3] < 128:
+            newData.append((255, 255, 255, 255))
         else:
             newData.append(item)
 
-    mew_image = Image.new(mode="RGBA", size=image.size)
-    mew_image.putdata(newData)
-    return mew_image
+    new_image = Image.new(mode="RGBA", size=image.size)
+    new_image.putdata(newData)
+    return new_image
 
 
-prompt = "high quality, pixel perfect, nft"
-negative_prompt = "ugly, disfigured, low quality, blurry, nsfw"
+def crop_square(image: Image.Image) -> Image.Image:
+    width, height = image.size
+    size = min(width, height)
+
+    left = (width - size) / 2
+    top = (height - size) / 2
+    right = (width + size) / 2
+    bottom = (height + size) / 2
+
+    return image.crop((left, top, right, bottom))
+
+
+prompt = "nft:2.0, high quality, cinematic, render:2.0, HD, 4k, 8k, randscape"
+negative_prompt = "ugly, disfigured, low quality, blurry, nsfw, typography"
 main_image_path = "test/data.png"
 data = "naver.com"
 main_image = (
-    Image.open(main_image_path).resize((image_size, image_size)).convert("RGBA")
+    crop_square(Image.open(main_image_path))
+    .resize((image_size, image_size))
+    .convert("RGBA")
 )
 main_image = transparent_to_white(main_image)
+main_image.save("main.png")
 qr_image: Image.Image = (
     qrcode.make(
         data=data,
@@ -73,8 +87,8 @@ qr_image: Image.Image = (
     .convert("RGBA")
 )
 
-alpha_qr_image = white_bg_to_transparent(qr_image)
-alpha_qr_image.putalpha(100)
+alpha_qr_image = qr_image.copy()
+alpha_qr_image.putalpha(128)
 alpha_qr_image.save("alpha.png")
 blended_image = Image.alpha_composite(main_image, alpha_qr_image)
 blended_image.save("blended.png")
@@ -82,14 +96,13 @@ image = pipe(
     prompt=prompt,
     negative_prompt=negative_prompt,
     image=blended_image,
-    control_image=alpha_qr_image,
+    control_image=qr_image,
     width=image_size,
     height=image_size,
-    guidance_scale=5,
-    controlnet_conditioning_scale=0.3,
+    guidance_scale=30,
+    controlnet_conditioning_scale=0.5,
     strength=0.6,
     num_inference_steps=50,
 ).images[0]
-
 
 image.save(f'{main_image_path.split(".")[0]}.result.png')
