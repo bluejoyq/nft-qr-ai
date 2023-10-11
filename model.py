@@ -1,7 +1,6 @@
 import torch
-from PIL import Image, ImageOps
+from PIL import Image
 import qrcode
-import torchvision.transforms as T
 from diffusers import (
     StableDiffusionControlNetImg2ImgPipeline,
     ControlNetModel,
@@ -21,6 +20,10 @@ pipe = StableDiffusionControlNetImg2ImgPipeline.from_pretrained(
 pipe.enable_xformers_memory_efficient_attention()
 
 image_size = 768
+prompt = "nft:2.0, high quality, cinematic, render:2.0, HD, 4k, 8k, randscape"
+negative_prompt = "ugly, disfigured, low quality, blurry, nsfw, typography"
+data = "naver.com"
+# main_image_path = "test/data.png"
 
 
 def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
@@ -64,45 +67,38 @@ def crop_square(image: Image.Image) -> Image.Image:
     return image.crop((left, top, right, bottom))
 
 
-prompt = "nft:2.0, high quality, cinematic, render:2.0, HD, 4k, 8k, randscape"
-negative_prompt = "ugly, disfigured, low quality, blurry, nsfw, typography"
-main_image_path = "test/data.png"
-data = "naver.com"
-main_image = (
-    crop_square(Image.open(main_image_path))
-    .resize((image_size, image_size))
-    .convert("RGBA")
-)
-main_image = transparent_to_white(main_image)
-main_image.save("main.png")
-qr_image: Image.Image = (
-    qrcode.make(
-        data=data,
-        version=1,
-        error_correction=qrcode.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
+def inference(image: Image.Image, data: str) -> Image.Image:
+    main_image = crop_square(image).resize((image_size, image_size)).convert("RGBA")
+    main_image = transparent_to_white(main_image)
+    main_image.save("main.png")
+    qr_image: Image.Image = (
+        qrcode.make(
+            data=data,
+            version=1,
+            error_correction=qrcode.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+        .resize((image_size, image_size))
+        .convert("RGBA")
     )
-    .resize((image_size, image_size))
-    .convert("RGBA")
-)
 
-alpha_qr_image = qr_image.copy()
-alpha_qr_image.putalpha(128)
-alpha_qr_image.save("alpha.png")
-blended_image = Image.alpha_composite(main_image, alpha_qr_image)
-blended_image.save("blended.png")
-image = pipe(
-    prompt=prompt,
-    negative_prompt=negative_prompt,
-    image=blended_image,
-    control_image=qr_image,
-    width=image_size,
-    height=image_size,
-    guidance_scale=30,
-    controlnet_conditioning_scale=0.5,
-    strength=0.6,
-    num_inference_steps=50,
-).images[0]
+    alpha_qr_image = qr_image.copy()
+    alpha_qr_image.putalpha(128)
+    alpha_qr_image.save("alpha.png")
+    blended_image = Image.alpha_composite(main_image, alpha_qr_image)
+    blended_image.save("blended.png")
+    image = pipe(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        image=blended_image,
+        control_image=qr_image,
+        width=image_size,
+        height=image_size,
+        guidance_scale=30,
+        controlnet_conditioning_scale=0.5,
+        strength=0.6,
+        num_inference_steps=50,
+    ).images[0]
 
-image.save(f'{main_image_path.split(".")[0]}.result.png')
+    return image

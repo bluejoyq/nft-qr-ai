@@ -1,9 +1,11 @@
-diffusers
+fastapi==0.103.2
+uvicorn[standard]
+Pillow==10.0.1
+qrcode==7.4.2
+torch
+diffusers["torch"] 
 transformers
 accelerate
-torch
 xformers
-gradio
-Pillow
-qrcode
-einops
+python-multipart
+# pip install torch==2.0.1+cu118 --index-url https://download.pytorch.org/whl/cu118
