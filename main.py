@@ -1,11 +1,23 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
-from model import inference
+from model import gen_qr_image
 from PIL import Image
 import io
 import base64
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+origins = [
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def from_image_to_bytes(image: Image.Image) -> io.BytesIO:
@@ -31,7 +43,7 @@ async def generate_qr(file: UploadFile = File()):
             raise HTTPException(status_code=400, detail="File is not an image.")
         content = await file.read()
         image = Image.open(io.BytesIO(content))
-        result_image = inference(image, "data")
+        result_image = gen_qr_image(image, "data")
         image_bytes = from_image_to_bytes(result_image)
         return StreamingResponse(image_bytes, media_type="image/png")
     except Exception as e:

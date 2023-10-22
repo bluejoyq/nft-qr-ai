@@ -5,7 +5,8 @@ from diffusers import (
     StableDiffusionControlNetImg2ImgPipeline,
     ControlNetModel,
 )
-
+from pyzbar.pyzbar import decode
+from typing import Tuple
 
 controlnet = ControlNetModel.from_pretrained(
     "DionTimmer/controlnet_qrcode-control_v11p_sd21", torch_dtype=torch.float16
@@ -67,27 +68,7 @@ def crop_square(image: Image.Image) -> Image.Image:
     return image.crop((left, top, right, bottom))
 
 
-def inference(image: Image.Image, data: str) -> Image.Image:
-    main_image = crop_square(image).resize((image_size, image_size)).convert("RGBA")
-    main_image = transparent_to_white(main_image)
-    main_image.save("main.png")
-    qr_image: Image.Image = (
-        qrcode.make(
-            data=data,
-            version=1,
-            error_correction=qrcode.ERROR_CORRECT_H,
-            box_size=10,
-            border=4,
-        )
-        .resize((image_size, image_size))
-        .convert("RGBA")
-    )
-
-    alpha_qr_image = qr_image.copy()
-    alpha_qr_image.putalpha(128)
-    alpha_qr_image.save("alpha.png")
-    blended_image = Image.alpha_composite(main_image, alpha_qr_image)
-    blended_image.save("blended.png")
+def inference(blended_image: Image.Image, qr_image: Image.Image) -> Image.Image:
     image = pipe(
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -102,3 +83,37 @@ def inference(image: Image.Image, data: str) -> Image.Image:
     ).images[0]
 
     return image
+
+
+def prepare(image: Image.Image, data: str) -> Tuple[Image.Image, Image.Image]:
+    main_image = crop_square(image).resize((image_size, image_size)).convert("RGBA")
+    main_image = transparent_to_white(main_image)
+    qr_image: Image.Image = (
+        qrcode.make(
+            data=data,
+            version=1,
+            error_correction=qrcode.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+        .resize((image_size, image_size))
+        .convert("RGBA")
+    )
+
+    alpha_qr_image = qr_image.copy()
+    alpha_qr_image.putalpha(128)
+    blended_image = Image.alpha_composite(main_image, alpha_qr_image)
+    return blended_image, qr_image
+
+
+def gen_qr_image(image: Image.Image, data: str) -> Image.Image:
+    blendend_image, qr_image = prepare(image, data)
+
+    for i in range(3):
+        result_image = inference(blendend_image, qr_image)
+        decode_result = decode(result_image)
+        if len(decode_result) == 0:
+            continue
+        print(decode_result)
+        return result_image
+    raise Exception("이미지 생성 실패")
