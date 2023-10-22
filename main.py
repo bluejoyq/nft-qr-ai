@@ -1,10 +1,12 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from model import gen_qr_image
+from dtos import QrDto
 from PIL import Image
 import io
-import base64
+import requests
 from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
 origins = [
@@ -18,6 +20,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def load_image_from_url(url: str) -> Image.Image:
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to load image: {response.status_code}")
+    image_bytes = io.BytesIO(response.content)
+    return Image.open(image_bytes)
 
 
 def from_image_to_bytes(image: Image.Image) -> io.BytesIO:
@@ -37,14 +47,14 @@ def health_check():
 
 
 @app.post("/qr")
-async def generate_qr(file: UploadFile = File()):
+async def generate_qr(dto: QrDto):
     try:
-        if "image" not in file.content_type:
-            raise HTTPException(status_code=400, detail="File is not an image.")
-        content = await file.read()
-        image = Image.open(io.BytesIO(content))
-        result_image = gen_qr_image(image, "data")
+        image = load_image_from_url(dto.image_url)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail="image load fail")
+    try:
+        result_image = gen_qr_image(image, dto.qr_data)
         image_bytes = from_image_to_bytes(result_image)
         return StreamingResponse(image_bytes, media_type="image/png")
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        raise HTTPException(status_code=500, detail=e)

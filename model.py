@@ -1,11 +1,11 @@
 import torch
-from PIL import Image
+from PIL import Image, ImageEnhance
 import qrcode
 from diffusers import (
     StableDiffusionControlNetImg2ImgPipeline,
     ControlNetModel,
 )
-from pyzbar.pyzbar import decode
+from pyzbar.pyzbar import decode, ZBarSymbol
 from typing import Tuple
 
 controlnet = ControlNetModel.from_pretrained(
@@ -21,10 +21,8 @@ pipe = StableDiffusionControlNetImg2ImgPipeline.from_pretrained(
 pipe.enable_xformers_memory_efficient_attention()
 
 image_size = 768
-prompt = "nft:2.0, high quality, cinematic, render:2.0, HD, 4k, 8k, randscape"
+prompt = "high quality, cinematic, render:2.0, HD, 4k, 8k"
 negative_prompt = "ugly, disfigured, low quality, blurry, nsfw, typography"
-data = "naver.com"
-# main_image_path = "test/data.png"
 
 
 def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
@@ -78,19 +76,19 @@ def inference(blended_image: Image.Image, qr_image: Image.Image) -> Image.Image:
         height=image_size,
         guidance_scale=30,
         controlnet_conditioning_scale=0.5,
-        strength=0.6,
+        strength=0.5,
         num_inference_steps=50,
     ).images[0]
 
     return image
 
 
-def prepare(image: Image.Image, data: str) -> Tuple[Image.Image, Image.Image]:
+def prepare(image: Image.Image, qr_data: str) -> Tuple[Image.Image, Image.Image]:
     main_image = crop_square(image).resize((image_size, image_size)).convert("RGBA")
     main_image = transparent_to_white(main_image)
     qr_image: Image.Image = (
         qrcode.make(
-            data=data,
+            data=qr_data,
             version=1,
             error_correction=qrcode.ERROR_CORRECT_H,
             box_size=10,
@@ -106,14 +104,21 @@ def prepare(image: Image.Image, data: str) -> Tuple[Image.Image, Image.Image]:
     return blended_image, qr_image
 
 
-def gen_qr_image(image: Image.Image, data: str) -> Image.Image:
-    blendend_image, qr_image = prepare(image, data)
+def gen_qr_image(image: Image.Image, qr_data: str) -> Image.Image:
+    base_image = image
 
     for i in range(3):
+        blendend_image, qr_image = prepare(base_image, qr_data)
         result_image = inference(blendend_image, qr_image)
-        decode_result = decode(result_image)
+        color_enhancer = ImageEnhance.Color(result_image)
+        result_image = color_enhancer.enhance(1.5)
+        contrast_enhancer = ImageEnhance.Contrast(result_image)
+        result_image = contrast_enhancer.enhance(1.2)
+
+        decode_result = decode(result_image, symbols=[ZBarSymbol.QRCODE])
+
         if len(decode_result) == 0:
+            base_image = result_image
             continue
-        print(decode_result)
         return result_image
     raise Exception("이미지 생성 실패")
