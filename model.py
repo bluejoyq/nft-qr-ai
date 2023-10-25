@@ -5,7 +5,7 @@ from diffusers import (
     StableDiffusionControlNetImg2ImgPipeline,
     ControlNetModel,
 )
-from pyzbar.pyzbar import decode, ZBarSymbol
+
 from typing import Tuple
 
 controlnet = ControlNetModel.from_pretrained(
@@ -107,18 +107,10 @@ def prepare(image: Image.Image, qr_data: str) -> Tuple[Image.Image, Image.Image]
 def gen_qr_image(image: Image.Image, qr_data: str) -> Image.Image:
     base_image = image
 
-    for i in range(3):
-        blendend_image, qr_image = prepare(base_image, qr_data)
-        result_image = inference(blendend_image, qr_image)
-        color_enhancer = ImageEnhance.Color(result_image)
-        result_image = color_enhancer.enhance(1.5)
-        contrast_enhancer = ImageEnhance.Contrast(result_image)
-        result_image = contrast_enhancer.enhance(1.2)
-
-        decode_result = decode(result_image, symbols=[ZBarSymbol.QRCODE])
-
-        if len(decode_result) == 0:
-            base_image = result_image
-            continue
-        return result_image
-    raise Exception("이미지 생성 실패")
+    blendend_image, qr_image = prepare(base_image, qr_data)
+    result_image = inference(blendend_image, qr_image)
+    color_enhancer = ImageEnhance.Color(result_image)
+    result_image = color_enhancer.enhance(1.5)
+    contrast_enhancer = ImageEnhance.Contrast(result_image)
+    result_image = contrast_enhancer.enhance(1.2)
+    return result_image

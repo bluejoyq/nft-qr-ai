@@ -9,9 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
-origins = [
-    "http://localhost:5173",
-]
+origins = ["http://localhost:5173", "https://nft-qr.web.app"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,7 +49,7 @@ async def generate_qr(dto: QrDto):
     try:
         image = load_image_from_url(dto.image_url)
     except Exception as e:
-        raise HTTPException(status_code=404, detail="image load fail")
+        raise HTTPException(status_code=400, detail="image load fail")
     try:
         result_image = gen_qr_image(image, dto.qr_data)
         image_bytes = from_image_to_bytes(result_image)
