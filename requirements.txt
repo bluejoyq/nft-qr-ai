@@ -1,6 +1,7 @@
 fastapi==0.103.2
 uvicorn[standard]
 Pillow==10.0.1
+pillow-avif-plugin
 qrcode==7.4.2
 torch
 diffusers["torch"] 

@@ -1,4 +1,5 @@
 import torch
+import pillow_avif
 from PIL import Image, ImageEnhance
 import qrcode
 from diffusers import (
@@ -20,9 +21,7 @@ pipe = StableDiffusionControlNetImg2ImgPipeline.from_pretrained(
 ).to("cuda")
 pipe.enable_xformers_memory_efficient_attention()
 
-image_size = 768
-prompt = "high quality, cinematic, render:2.0, HD, 4k, 8k"
-negative_prompt = "ugly, disfigured, low quality, blurry, nsfw, typography"
+IMAGE_SIZE = 768
 
 
 def white_bg_to_transparent(qr_image: Image.Image) -> Image.Image:
@@ -66,25 +65,34 @@ def crop_square(image: Image.Image) -> Image.Image:
     return image.crop((left, top, right, bottom))
 
 
-def inference(blended_image: Image.Image, qr_image: Image.Image) -> Image.Image:
+def inference(
+    blended_image: Image.Image,
+    qr_image: Image.Image,
+    prompt="high quality, cinematic, render:2.0, HD, 4k, 8k",
+    negative_prompt="ugly, disfigured, low quality, blurry, nsfw, typography",
+    guidance_scale=30,
+    controlnet_conditioning_scale=0.5,
+    strength=0.5,
+    num_inference_steps=50,
+) -> Image.Image:
     image = pipe(
         prompt=prompt,
         negative_prompt=negative_prompt,
+        width=IMAGE_SIZE,
+        height=IMAGE_SIZE,
         image=blended_image,
         control_image=qr_image,
-        width=image_size,
-        height=image_size,
-        guidance_scale=30,
-        controlnet_conditioning_scale=0.5,
-        strength=0.5,
-        num_inference_steps=50,
+        guidance_scale=guidance_scale,
+        controlnet_conditioning_scale=controlnet_conditioning_scale,
+        strength=strength,
+        num_inference_steps=num_inference_steps,
     ).images[0]
 
     return image
 
 
 def prepare(image: Image.Image, qr_data: str) -> Tuple[Image.Image, Image.Image]:
-    main_image = crop_square(image).resize((image_size, image_size)).convert("RGBA")
+    main_image = crop_square(image).resize((IMAGE_SIZE, IMAGE_SIZE)).convert("RGBA")
     main_image = transparent_to_white(main_image)
     qr_image: Image.Image = (
         qrcode.make(
@@ -94,13 +102,17 @@ def prepare(image: Image.Image, qr_data: str) -> Tuple[Image.Image, Image.Image]
             box_size=10,
             border=4,
         )
-        .resize((image_size, image_size))
+        .resize((IMAGE_SIZE, IMAGE_SIZE))
         .convert("RGBA")
     )
 
     alpha_qr_image = qr_image.copy()
     alpha_qr_image.putalpha(128)
     blended_image = Image.alpha_composite(main_image, alpha_qr_image)
+    color_enhancer = ImageEnhance.Color(blended_image)
+    blended_image = color_enhancer.enhance(1.8)
+    contrast_enhancer = ImageEnhance.Contrast(blended_image)
+    blended_image = contrast_enhancer.enhance(1.35)
     return blended_image, qr_image
 
 
