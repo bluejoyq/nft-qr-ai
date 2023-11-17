@@ -68,15 +68,16 @@ def crop_square(image: Image.Image) -> Image.Image:
 def inference(
     blended_image: Image.Image,
     qr_image: Image.Image,
-    prompt="high quality, cinematic, render:2.0, HD, 4k, 8k",
-    negative_prompt="ugly, disfigured, low quality, blurry, nsfw, typography",
+    prompt: str,
+    base_prompt="high quality, cinematic, render:2.0, HD, 4k, 8k,master piece,",
+    negative_prompt="ugly, disfigured, low quality, blurry, nsfw, typography:2.0, text:2.0, letter:2.0",
     guidance_scale=30,
     controlnet_conditioning_scale=0.5,
     strength=0.5,
     num_inference_steps=50,
 ) -> Image.Image:
     image = pipe(
-        prompt=prompt,
+        prompt=base_prompt + prompt,
         negative_prompt=negative_prompt,
         width=IMAGE_SIZE,
         height=IMAGE_SIZE,
@@ -116,11 +117,11 @@ def prepare(image: Image.Image, qr_data: str) -> Tuple[Image.Image, Image.Image]
     return blended_image, qr_image
 
 
-def gen_qr_image(image: Image.Image, qr_data: str) -> Image.Image:
+def gen_qr_image(image: Image.Image, qr_data: str, prompt: str) -> Image.Image:
     base_image = image
 
     blendend_image, qr_image = prepare(base_image, qr_data)
-    result_image = inference(blendend_image, qr_image)
+    result_image = inference(blendend_image, qr_image, prompt)
     color_enhancer = ImageEnhance.Color(result_image)
     result_image = color_enhancer.enhance(1.5)
     contrast_enhancer = ImageEnhance.Contrast(result_image)

@@ -51,7 +51,7 @@ async def generate_qr(dto: QrDto):
     except Exception as e:
         raise HTTPException(status_code=400, detail="image load fail")
     try:
-        result_image = gen_qr_image(image, dto.qr_data)
+        result_image = gen_qr_image(image, dto.qr_data, dto.prompt)
         image_bytes = from_image_to_bytes(result_image)
         return StreamingResponse(image_bytes, media_type="image/png")
     except Exception as e:
