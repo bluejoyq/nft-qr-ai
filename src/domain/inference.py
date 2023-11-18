@@ -1,5 +1,4 @@
 import torch
-import pillow_avif
 from PIL import Image, ImageEnhance
 import qrcode
 from diffusers import (

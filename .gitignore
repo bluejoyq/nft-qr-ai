@@ -7,6 +7,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+*.db
 *.out
 # C extensions
 *.so
@@ -30,7 +31,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+public/*.png
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
