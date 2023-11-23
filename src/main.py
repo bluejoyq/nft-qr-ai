@@ -63,14 +63,15 @@ async def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="image load fail")
     try:
         result_image = gen_qr_image(image, dto.qr_data, dto.additional_prompt)
+        image_name = f"{time.time()}.png"
+        image_src = f"{os.getcwd()}/public/{image_name}"
 
-        image_src = f"{os.getcwd()}/public/{time.time()}.png"
         result_image.save(image_src)
         qr_history = models.QrHistory(
             address=dto.address,
             contract_address=dto.contract_address,
             token_id=dto.token_id,
-            image_src=image_src,
+            image_name=image_name,
             qr_data=dto.qr_data,
         )
         crud.create_qr_history(db=db, qr_history=qr_history)

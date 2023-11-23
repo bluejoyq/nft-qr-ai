@@ -6,7 +6,7 @@ test/data.result.png
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.sqlite
 *.db
 *.out
 # C extensions

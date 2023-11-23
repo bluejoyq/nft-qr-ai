@@ -17,5 +17,5 @@ class QrHistory(QrHistoryBase):
     address: Mapped[str]
     contract_address: Mapped[str]
     token_id: Mapped[str]
-    image_src: Mapped[str]
+    image_name: Mapped[str]
     qr_data: Mapped[str]
