@@ -11,7 +11,7 @@ __pycache__/
 *.out
 # C extensions
 *.so
-
+nft-qr-firebase-adminsdk-f9461-e119ec4c73.json
 # Distribution / packaging
 .Python
 build/

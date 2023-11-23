@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from src.domain.inference import gen_qr_image
 from src.data.dtos import QrDto
 from PIL import Image
@@ -7,9 +7,10 @@ import io
 import requests
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from .data import database, models, crud
+from .data import database, models, crud, firebase
 import time
 import os
+from firebase_admin import storage
 
 app = FastAPI()
 origins = ["http://localhost:5173", "https://nft-qr.web.app"]
@@ -55,6 +56,11 @@ def health_check():
     return "good"
 
 
+@app.get("/public/{image_name}")
+def read_image(image_name: str):
+    return FileResponse(f"{os.getcwd()}/public/{image_name}")
+
+
 @app.post("/qr")
 async def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
     try:
@@ -63,20 +69,16 @@ async def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="image load fail")
     try:
         result_image = gen_qr_image(image, dto.qr_data, dto.additional_prompt)
-        image_name = f"{time.time()}.png"
-        image_src = f"{os.getcwd()}/public/{image_name}"
-
-        result_image.save(image_src)
+        image_src = firebase.save_image(result_image)
         qr_history = models.QrHistory(
             address=dto.address,
             contract_address=dto.contract_address,
             token_id=dto.token_id,
-            image_name=image_name,
+            image_src=image_src,
             qr_data=dto.qr_data,
         )
         crud.create_qr_history(db=db, qr_history=qr_history)
-        image_bytes = from_image_to_bytes(result_image)
-        return StreamingResponse(image_bytes, media_type="image/png")
+        return qr_history
     except Exception as e:
         raise HTTPException(status_code=500, detail=e)
 

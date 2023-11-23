@@ -11,4 +11,6 @@ xformers
 python-multipart
 pyzbar
 sqlalchemy
+firebase_admin
+google-cloud-storage
 # pip install torch==2.0.1+cu118 --index-url https://download.pytorch.org/whl/cu118
