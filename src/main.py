@@ -7,7 +7,7 @@ import io
 import requests
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from .data import database, models, crud, firebase
+from .data import database, models, crud, firebase, schemas
 import time
 import os
 from firebase_admin import storage
@@ -62,7 +62,7 @@ def read_image(image_name: str):
 
 
 @app.post("/qr")
-async def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
+def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
     try:
         image = load_image_from_url(dto.image_url)
     except Exception as e:
@@ -78,19 +78,17 @@ async def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
             qr_data=dto.qr_data,
         )
         crud.create_qr_history(db=db, qr_history=qr_history)
-        return qr_history
+        return schemas.QrHistory.model_validate(qr_history)
     except Exception as e:
         raise HTTPException(status_code=500, detail=e)
 
 
 @app.get("/qr")
-async def get_qr_histories(offset: int = 0, db: Session = Depends(get_db)):
+def get_qr_histories(offset: int = 0, db: Session = Depends(get_db)):
     data = crud.get_qr_histories(db=db, offset=offset)
 
     next = offset + 10
     if len(data) != 10:
         next = None
-    return {
-        data: data,
-        next: next,
-    }
+    qr_histories = list(map(schemas.QrHistory.model_validate, data))
+    return schemas.QrHistoriesRes(data=qr_histories, next=next)

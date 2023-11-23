@@ -9,4 +9,4 @@ def create_qr_history(db: Session, qr_history: models.QrHistory):
 
 
 def get_qr_histories(db: Session, offset: int = 0):
-    return db.query(models.QrHistory).offset(offset).all()
+    return db.query(models.QrHistory).offset(offset).limit(10).all()

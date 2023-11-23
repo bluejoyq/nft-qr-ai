@@ -1,6 +1,5 @@
 from typing import Optional
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, MappedAsDataclass
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
 
 class QrHistoryBase(
