@@ -71,9 +71,6 @@ def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
         result_image = gen_qr_image(image, dto.qr_data, dto.additional_prompt)
         image_src = firebase.save_image(result_image)
         qr_history = models.QrHistory(
-            address=dto.address,
-            contract_address=dto.contract_address,
-            token_id=dto.token_id,
             image_src=image_src,
             qr_data=dto.qr_data,
         )

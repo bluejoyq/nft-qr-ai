@@ -13,8 +13,5 @@ class QrHistory(QrHistoryBase):
     id: Mapped[Optional[int]] = mapped_column(
         primary_key=True, index=True, autoincrement=True
     )
-    address: Mapped[str]
-    contract_address: Mapped[str]
-    token_id: Mapped[str]
     image_src: Mapped[str]
     qr_data: Mapped[str]
