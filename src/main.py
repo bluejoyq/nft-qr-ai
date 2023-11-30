@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, File, UploadFile, HTTPException
+from fastapi import Depends, FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from src.domain.inference import gen_qr_image
 from src.data.dtos import QrDto
@@ -51,6 +51,20 @@ def from_image_to_bytes(image: Image.Image) -> io.BytesIO:
     return image_bytes
 
 
+async def upload_file_to_image(upload_file: UploadFile):
+    # 파일의 내용을 메모리에 읽어 들임
+    contents = await upload_file.read()
+
+    # BytesIO 객체를 생성하여 PIL 이미지로 변환
+    image = Image.open(io.BytesIO(contents))
+
+    # 필요한 작업 수행 (예: 이미지 처리, 저장 등)
+    # ...
+
+    # 이미지 객체 반환
+    return image
+
+
 @app.get("/health")
 def health_check():
     return "good"
@@ -62,17 +76,22 @@ def read_image(image_name: str):
 
 
 @app.post("/qr")
-def generate_qr(dto: QrDto, db: Session = Depends(get_db)):
+async def generate_qr(
+    photo: UploadFile = File(),
+    qr_data: str = Form(),
+    additional_prompt: str = Form(),
+    db: Session = Depends(get_db),
+):
     try:
-        image = load_image_from_url(dto.image_url)
+        image = await upload_file_to_image(photo)
     except Exception as e:
         raise HTTPException(status_code=400, detail="image load fail")
     try:
-        result_image = gen_qr_image(image, dto.qr_data, dto.additional_prompt)
+        result_image = gen_qr_image(image, qr_data, additional_prompt)
         image_src = firebase.save_image(result_image)
         qr_history = models.QrHistory(
             image_src=image_src,
-            qr_data=dto.qr_data,
+            qr_data=qr_data,
         )
         crud.create_qr_history(db=db, qr_history=qr_history)
         return schemas.QrHistory.model_validate(qr_history)
