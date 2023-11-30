@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from src.domain.inference import gen_qr_image
@@ -75,15 +76,40 @@ def read_image(image_name: str):
     return FileResponse(f"{os.getcwd()}/public/{image_name}")
 
 
-@app.post("/qr")
-async def generate_qr(
+@app.post("/qr/photo")
+async def generate_qr_with_photo(
     photo: UploadFile = File(),
     qr_data: str = Form(),
-    additional_prompt: str = Form(),
+    additional_prompt: Optional[str] = Form(""),
     db: Session = Depends(get_db),
 ):
     try:
         image = await upload_file_to_image(photo)
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="image load fail")
+    try:
+        result_image = gen_qr_image(image, qr_data, additional_prompt)
+        image_src = firebase.save_image(result_image)
+        qr_history = models.QrHistory(
+            image_src=image_src,
+            qr_data=qr_data,
+        )
+        crud.create_qr_history(db=db, qr_history=qr_history)
+        return schemas.QrHistory.model_validate(qr_history)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e)
+
+
+@app.post("/qr/nft")
+async def generate_qr_with_nft(
+    image_url: str = Form(),
+    qr_data: str = Form(),
+    additional_prompt: Optional[str] = Form(""),
+    db: Session = Depends(get_db),
+):
+    try:
+        image = load_image_from_url(image_url)
     except Exception as e:
         raise HTTPException(status_code=400, detail="image load fail")
     try:
