@@ -1,12 +1,13 @@
 import torch
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageChops
 import qrcode
 from diffusers import (
     StableDiffusionControlNetImg2ImgPipeline,
     ControlNetModel,
 )
-
+import colortrans
 from typing import Tuple
+import numpy as np
 
 controlnet = ControlNetModel.from_pretrained(
     "DionTimmer/controlnet_qrcode-control_v11p_sd21", torch_dtype=torch.float16
@@ -19,6 +20,7 @@ pipe = StableDiffusionControlNetImg2ImgPipeline.from_pretrained(
     torch_dtype=torch.float16,
 ).to("cuda")
 pipe.enable_xformers_memory_efficient_attention()
+
 
 IMAGE_SIZE = 768
 
@@ -68,7 +70,7 @@ def inference(
     blended_image: Image.Image,
     qr_image: Image.Image,
     additional_prompt: str,
-    base_prompt="high quality, cinematic, render:2.0, HD, 4k, 8k, epic, master piece,",
+    base_prompt="A High-resolution 8K NFT QR code generated with high-quality cinematic rendering,",
     negative_prompt="ugly, disfigured, low quality, blurry, nsfw, typography:2.0, text:2.0, letter:2.0",
     guidance_scale=30,
     controlnet_conditioning_scale=0.5,
@@ -106,13 +108,11 @@ def prepare(image: Image.Image, qr_data: str) -> Tuple[Image.Image, Image.Image]
         .convert("RGBA")
     )
 
-    alpha_qr_image = qr_image.copy()
-    alpha_qr_image.putalpha(128)
-    blended_image = Image.alpha_composite(main_image, alpha_qr_image)
+    blended_image = ImageChops.blend(main_image, qr_image, 0.5)
     color_enhancer = ImageEnhance.Color(blended_image)
-    blended_image = color_enhancer.enhance(1.8)
+    blended_image = color_enhancer.enhance(1.4)
     contrast_enhancer = ImageEnhance.Contrast(blended_image)
-    blended_image = contrast_enhancer.enhance(1.35)
+    blended_image = contrast_enhancer.enhance(1.3)
     return blended_image, qr_image
 
 
@@ -122,9 +122,12 @@ def gen_qr_image(
     base_image = image
 
     blendend_image, qr_image = prepare(base_image, qr_data)
+
     result_image = inference(blendend_image, qr_image, additional_prompt)
-    color_enhancer = ImageEnhance.Color(result_image)
-    result_image = color_enhancer.enhance(1.5)
+    content = np.array(result_image.convert("RGB"))
+    reference = np.array(base_image.convert("RGB"))
+    output_lhm = colortrans.transfer_lhm(content, reference)
+    result_image = Image.fromarray(output_lhm)
     contrast_enhancer = ImageEnhance.Contrast(result_image)
-    result_image = contrast_enhancer.enhance(1.2)
+    result_image = contrast_enhancer.enhance(1.3)
     return result_image

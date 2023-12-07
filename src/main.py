@@ -12,6 +12,7 @@ from .data import database, models, crud, firebase, schemas
 import time
 import os
 from firebase_admin import storage
+import pillow_avif
 
 app = FastAPI()
 origins = ["http://localhost:5173", "https://nft-qr.web.app"]
