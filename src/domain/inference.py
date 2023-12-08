@@ -70,7 +70,7 @@ def inference(
     blended_image: Image.Image,
     qr_image: Image.Image,
     additional_prompt: str,
-    base_prompt="A High-resolution 8K NFT QR code generated with high-quality cinematic rendering,",
+    base_prompt="A Pixel-Perfect High-resolution 8K NFT QR code generated with high-quality cinematic rendering,",
     negative_prompt="ugly, disfigured, low quality, blurry, nsfw, typography:2.0, text:2.0, letter:2.0",
     guidance_scale=30,
     controlnet_conditioning_scale=0.5,
@@ -127,7 +127,10 @@ def gen_qr_image(
     content = np.array(result_image.convert("RGB"))
     reference = np.array(base_image.convert("RGB"))
     output_lhm = colortrans.transfer_lhm(content, reference)
-    result_image = Image.fromarray(output_lhm)
+    lhm_image = Image.fromarray(output_lhm)
+    result_image = ImageChops.blend(result_image, lhm_image, 0.4)
+    color_enhancer = ImageEnhance.Color(result_image)
+    result_image = color_enhancer.enhance(1.3)
     contrast_enhancer = ImageEnhance.Contrast(result_image)
     result_image = contrast_enhancer.enhance(1.3)
     return result_image
